@@ -1,0 +1,19 @@
+{
+  "name": "krypto",
+  "version": "1.0.0",
+  "description": "HÜ2 - Programm",
+  "main": "src/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ob-julian/Krypto.git"
+  },
+  "author": "Julian Oberhofer",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ob-julian/Krypto/issues"
+  },
+  "homepage": "https://github.com/ob-julian/Krypto#readme"
+}
