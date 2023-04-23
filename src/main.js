@@ -186,19 +186,55 @@ function tryKey(cypher, key){
     return compareFrequencieToDefault(frequencyAnalysis(xorEncrypt(cypher, key)));
 }
 
+function generateKeyOptimized(cypher, keyLength){
+    let key = new Array(keyLength);
+    let MinScores = new Array(keyLength);
+    for(let i = 0; i < keyLength; i++){
+        let min = [+Infinity, ""];
+        const cypherLocal = everyXthChar(cypher,keyLength, i);
+        for (let j = 65; j <= 90; j++) {
+            let score = [tryKey(cypherLocal, String.fromCharCode(j)), String.fromCharCode(j)];
+            if(score[0] < min[0])
+            min = score;
+        }
+
+        // Loop through the lowercase letters a-z
+        for (let j = 97; j <= 122; j++) {
+            let score = [tryKey(cypherLocal, String.fromCharCode(j)), String.fromCharCode(j)];
+            if(score[0] < min[0])
+            min = score;
+        }
+
+        key[i] = min[1];
+        MinScores[i] = min[0];
+    }
+    return [MinScores, everyXthChar(key.toString(),2,0)];
+}
+
+function everyXthChar(str, step, offset) {
+    let newStr = '';
+    for (let i = offset; i < str.length; i += step) {
+      newStr += str[i];
+    }
+    return newStr;
+}
+
 function getKey(cypher, keyLength){
-    const key = generateKey(cypher, "", keyLength);
+    //const key = generateKey(cypher, "", keyLength);
+    const key = generateKeyOptimized(cypher, keyLength);
+    //console.log(key[0]);
     return key[1];
 }
 
 function decryptShortXOR(cypher){
     const keyLength = findPositionOfMinKeyLenght(cypher);
+    //const key = getKey(cypher, keyLength);
     const key = getKey(cypher, keyLength);
     return xorEncrypt(cypher, key);
 }
 
 //first test
-const plain = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ullamcorper dignissim cras tincidunt lobortis feugiat vivamus at. Tortor consequat id porta nibh venenatis. Vitae auctor eu augue ut lectus arcu bibendum. Tincidunt augue interdum velit euismod. Laoreet suspendisse interdum consectetur libero. Donec ultrices tincidunt arcu non sodales. Pellentesque massa placerat duis ultricies. Ac feugiat sed lectus vestibulum. Sed tempus urna et pharetra pharetra massa massa ultricies. Non curabitur gravida arcu ac tortor dignissim. Egestas tellus rutrum tellus pellentesque eu tincidunt tortor. Sem integer vitae justo eget magna fermentum. Risus quis varius quam quisque id diam vel quam elementum. Mauris pellentesque pulvinar pellentesque habitant morbi tristique senectus et netus. Vitae congue mauris rhoncus aenean vel elit scelerisque mauris. Et ligula ullamcorper malesuada proin libero nunc consequat interdum varius. Arcu vitae elementum curabitur vitae nunc sed velit. Arcu felis bibendum ut tristique. Felis eget nunc lobortis mattis aliquam faucibus purus. Dolor magna eget est lorem ipsum dolor sit. Amet tellus cras adipiscing enim eu turpis egestas pretium aenean. Amet facilisis magna etiam tempor orci eu lobortis elementum nibh. Sed blandit libero volutpat sed cras.";
+const plain = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ullamcorper dignissim cras tincidunt lobortis feugiat vivamus at. Tortor consequat id porta nibh venenatis. Vitae auctor eu augue ut lectus arcu bibendum. Tincidunt augue interdum velit euismod. Laoreet suspendisse interdum consectetur libero. Donec ultrices tincidunt arcu non sodales. Pellentesque massa placerat duis ultricies. Ac feugiat sed lectus vestibulum. Sed tempus urna et pharetra pharetra massa massa ultricies. Non curabitur gravida arcu ac tortor dignissim. Egestas tellus rutrum tellus pellentesque eu tincidunt tortor.";
 const key = "key";
 const cypher = xorEncrypt(plain, key);
 //console.log(xorEncrypt(cypher, key));
