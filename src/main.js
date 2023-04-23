@@ -1,3 +1,33 @@
+const usableCharThreshold = 0.90;
+const englishFrequencies = {
+    'a': 8.167,
+    'b': 1.492,
+    'c': 2.782,
+    'd': 4.253,
+    'e': 12.702,
+    'f': 2.228,
+    'g': 2.015,
+    'h': 6.094,
+    'i': 6.966,
+    'j': 0.153,
+    'k': 0.772,
+    'l': 4.025,
+    'm': 2.406,
+    'n': 6.749,
+    'o': 7.507,
+    'p': 1.929,
+    'q': 0.095,
+    'r': 5.987,
+    's': 6.327,
+    't': 9.056,
+    'u': 2.758,
+    'v': 0.978,
+    'w': 2.360,
+    'x': 0.150,
+    'y': 1.974,
+    'z': 0.074
+  };
+
 function xorEncrypt(message, key) {
     const buffer = Buffer.from(message, "ASCII");
     const keyBuffer = Buffer.from(key, "ASCII");
@@ -20,9 +50,21 @@ function rot(str, x) {
     return rotated;
 }
 
+function shiftString(str, shiftBy) {
+    const shiftAmount = -(shiftBy % str.length);
+    ///shiftL
+    if(shiftAmount < 0){
+        return String.fromCharCode(0).repeat(str.slice(shiftAmount).length) + str.slice(0, shiftAmount);
+    }
+    else {
+        return str.slice(shiftAmount) + String.fromCharCode(0).repeat(str.slice(0, shiftAmount).length);
+    }
+}
+  
+
 function countSamePercent(cypher, amount){
     const cypherBuffer = Buffer.from(cypher);
-    const buffer = Buffer.from(rot(cypher, amount));
+    const buffer = Buffer.from(shiftString(cypher, amount));
     let count = 0;
     for (let i = 0; i < buffer.length; i++) {
         if((buffer[i] ^ cypherBuffer[i]) === 0)
@@ -49,6 +91,18 @@ function findPositionOfMaxIoC(cypher){
     return keyLength;
 }
 
+function findPositionOfMinKeyLenght(cypher){
+    const multipleOfKeyLength = findPositionOfMaxIoC(cypher);
+    let factors = getFactors(multipleOfKeyLength);
+    factors = factors.map(factor => [factor, countSamePercent(cypher, factor)]);
+    factors = factors.filter(factor => factor[1] > 4);
+    if(factors.length === 0)
+        factors[0] = [1, countSamePercent(cypher, 1)];
+    if(factors[0][1] < 5)
+        console.log("Smalest Key at just IoC: "+ factors[0][1] +"), continuing anyway...");
+    return factors[0][0];
+}
+
 function getFactors(num) {
     let factors = [];
     const sqrt = Math.sqrt(num);
@@ -63,81 +117,96 @@ function getFactors(num) {
     }
   
     return factors.sort((a, b) => a - b);
-  }
-  
-
-function findPositionOfMinKeyLenght(cypher){
-    const multipleOfKeyLength = findPositionOfMaxIoC(cypher);
-    let factors = getFactors(multipleOfKeyLength);
-    factors = factors.map(factor => [factor, countSamePercent(cypher, factor)]);
-    factors = factors.filter(factor => factor[1] > 4);
-    if(factors.length === 0)
-        factors[0] = [1, countSamePercent(cypher, 1)];
-    if(factors[0][1] < 5)
-        console.log("Smales Key at just IoC: "+ factors[0][1] +"), continuing anyway...");
-    return factors[0][0];
 }
 
-function recursivTry(text, array, offset, keyLength){
+function frequencyAnalysis(text) {
+    text = text.toLowerCase();
+    //making sure that the text only contains usable ASCII characters
+    if(text.length !==text.replace(/[^ -~]/g, '').length)
+        return {};
+    //making sure that the text contains enough usable ASCII characters
+    if(text.length * usableCharThreshold <= text.replace(/[^a-z]/g, '').length)
+        return {};
+    text = text.replace(/[^a-z]/g, '');
     
-}
-
-function decrypt(cypher, keyLength){
-    let shiftPossibilities = new Array(cypher.length);
-    const cypherBuffer = Buffer.from(cypher);
-    let shift = keyLength;
-    do{
-        const buffer = Buffer.from(rot(cypher, shift));
-        for (let i = 0; i < buffer.length; i++) {
-            buffer[i] = buffer[i] ^ cypherBuffer[i]
-        }
-        shiftPossibilities[shift] = buffer;
-        shift = (shift + keyLength) % cypher.length;
-    } while(shift % cypher.length !== keyLength);
+    let frequency = {};
+    for (let i = 0; i < text.length; i++) {
+      let char = text.charAt(i);
+      if (frequency[char]) {
+        frequency[char]++;
+      } else {
+        frequency[char] = 1;
+      }
+    }
     
-    let guess = new Array(cypher.length);
-    tryToFill(shiftPossibilities, guess, 0);
-    return guess.toString().replace(/,/g, '');
+    let relativeFrequency = Object.entries(frequency).map(a => [a[0], a[1]/text.length*100]);
+    const frequencyObject = relativeFrequency.reduce((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {});
+    return frequencyObject;
 }
 
-function tryToFill(shiftPossibilities, guess, offset){
-    if(offset === guess.length)
-        return true;
-    console.log("Start: " + guess.toString().replace(/,/g, ''));
-    // Loop through the uppercase letters A-Z
-    for (let j = 65; j <= 90; j++) {
-        let localGuess = guess.slice();
-        localGuess[offset] = String.fromCharCode(j);
-        for(let i = 1; i <= shiftPossibilities.length; i++){
-            localOffset = (offset + i) % shiftPossibilities.length;
-            if(shiftPossibilities[localOffset] !== undefined) {
-                if(localGuess[localOffset] !== undefined) {
-                    if(localGuess[localOffset] !== shiftPossibilities[localOffset][offset])
-                        return false;
-                }
-                else
-                    localGuess[localOffset] = shiftPossibilities[localOffset][offset] ^ String.fromCharCode(j);
-            }
-        }
-        if(tryToFill(shiftPossibilities, localGuess, offset + 1)){
-            console.log("Found: " + localGuess.toString().replace(/,/g, ''));
-            guess = localGuess;
-            return true;
-        }
+function compareFrequencieToDefault(freq) {
+    let score = 0;
+    
+    for (let char in englishFrequencies) {
+      if (char in freq) {
+        score += Math.abs(englishFrequencies[char] - freq[char]);
+      } else {
+        score += englishFrequencies[char];
+      }
+    }
+
+    return score;
+}
+
+function generateKey(cypher, key, keyLength){
+    let min = [+Infinity, ""];
+    if(keyLength === 0)
+        return [tryKey(cypher, key), key];
+    // Loop through the lowercase letters A-Z
+    for (let i = 65; i <= 90; i++) {
+        let score = generateKey(cypher, key + String.fromCharCode(i), keyLength-1);
+        if(score[0] < min[0])
+            min = score;
     }
     
     // Loop through the lowercase letters a-z
     for (let i = 97; i <= 122; i++) {
-        //console.log(String.fromCharCode(i));
+        let score = generateKey(cypher, key + String.fromCharCode(i), keyLength-1);
+        if(score[0] < min[0])
+            min = score;
     }
-    return false;
+    return min;
 }
 
 
+function tryKey(cypher, key){
+    return compareFrequencieToDefault(frequencyAnalysis(xorEncrypt(cypher, key)));
+}
+
+function getKey(cypher, keyLength){
+    const key = generateKey(cypher, "", keyLength);
+    return key[1];
+}
+
+function decryptShortXOR(cypher){
+    const keyLength = findPositionOfMinKeyLenght(cypher);
+    const key = getKey(cypher, keyLength);
+    return xorEncrypt(cypher, key);
+}
+
 //first test
-const plain1 = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed luctus sollicitudin bibendum. Mauris vel quam sed lacus tristique dignissim. Aliquam quis elit vel neque blandit bibendum. Nullam malesuada tortor sapien, eu sagittis elit laoreet sit amet. Proin vel velit ut nisl rhoncus sodales eget a lectus. Integer tincidunt turpis id augue ultrices, id eleifend dolor ultricies. Duis in velit sed dolor pharetra hendrerit. Sed molestie tincidunt nibh, eu tincidunt risus vestibulum vel. Nullam quis ex id erat finibus bibendum. Nunc non erat vel mi ultrices tincidunt vitae nec massa. Suspendisse eleifend orci eget odio varius convallis. Sed eget sapien sapien. Aenean eu tellus ac nisi pellentesque pellentesque. Donec vel lectus et quam bibendum vulputate eu vel felis.'
-const plain2 = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."   
-const plain = "Ich wir";
+const plain = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ullamcorper dignissim cras tincidunt lobortis feugiat vivamus at. Tortor consequat id porta nibh venenatis. Vitae auctor eu augue ut lectus arcu bibendum. Tincidunt augue interdum velit euismod. Laoreet suspendisse interdum consectetur libero. Donec ultrices tincidunt arcu non sodales. Pellentesque massa placerat duis ultricies. Ac feugiat sed lectus vestibulum. Sed tempus urna et pharetra pharetra massa massa ultricies. Non curabitur gravida arcu ac tortor dignissim. Egestas tellus rutrum tellus pellentesque eu tincidunt tortor. Sem integer vitae justo eget magna fermentum. Risus quis varius quam quisque id diam vel quam elementum. Mauris pellentesque pulvinar pellentesque habitant morbi tristique senectus et netus. Vitae congue mauris rhoncus aenean vel elit scelerisque mauris. Et ligula ullamcorper malesuada proin libero nunc consequat interdum varius. Arcu vitae elementum curabitur vitae nunc sed velit. Arcu felis bibendum ut tristique. Felis eget nunc lobortis mattis aliquam faucibus purus. Dolor magna eget est lorem ipsum dolor sit. Amet tellus cras adipiscing enim eu turpis egestas pretium aenean. Amet facilisis magna etiam tempor orci eu lobortis elementum nibh. Sed blandit libero volutpat sed cras.";
 const key = "key";
 const cypher = xorEncrypt(plain, key);
-console.log(decrypt(cypher, 3));
+//console.log(xorEncrypt(cypher, key));
+//console.log(findPositionOfMaxIoC(cypher));
+//console.log(findPositionOfMinKeyLenght(cypher));
+//console.log(frequencyAnalysis(plain));
+//console.log(xorEncrypt(xorEncrypt(cypher, shiftString(cypher, key.length)), plain));
+//console.log(frequencyAnalysis(plain));
+//console.log(compareFrequencieToDefault(frequencyAnalysis(plain)));
+//console.log(tryKey(cypher, "KD"));
+console.log(decryptShortXOR(cypher));
