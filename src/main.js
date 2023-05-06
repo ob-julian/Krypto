@@ -1,4 +1,5 @@
 const usableCharThreshold = 0.90;
+const IoC_Threshold = 4;
 const englishFrequencies = {
     'a': 8.167,
     'b': 1.492,
@@ -83,7 +84,7 @@ function findPositionOfMaxIoC(cypher){
             keyLength = i;
         }
     }
-    if(max < 4)
+    if(max < IoC_Threshold)
         console.log("No conclusive result found (Max IoC: "+ max +"), continuing anyway...");
     //keyLength 0 does not make sense, so we set it to 1
     if(keyLength === 0)
@@ -95,7 +96,7 @@ function findPositionOfMinKeyLenght(cypher){
     const multipleOfKeyLength = findPositionOfMaxIoC(cypher);
     let factors = getFactors(multipleOfKeyLength);
     factors = factors.map(factor => [factor, countSamePercent(cypher, factor)]);
-    factors = factors.filter(factor => factor[1] > 4);
+    factors = factors.filter(factor => factor[1] > IoC_Threshold);
     if(factors.length === 0)
         factors[0] = [1, countSamePercent(cypher, 1)];
     if(factors[0][1] < 5)
