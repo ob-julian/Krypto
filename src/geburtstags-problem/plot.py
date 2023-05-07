@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import time
 
 def create_data():
     data = []
@@ -12,11 +13,27 @@ def create_data():
 
 
 def plot(data):
+    
     # Extract the y-values and the x-values from each sublist in data
     y_values = [sublist[0] for sublist in data]
     x1_values = [sublist[1] for sublist in data]
     x2_values = [sublist[2] for sublist in data]
+    create_plot(y_values, x1_values, x2_values)
 
+def plot_absolute(data, amount):
+    # No Block
+    plt.ion()
+    # Clear
+    plt.clf()
+    # Extract the y-values and the x-values from each sublist in data
+    y_values = [sublist[0] for sublist in data]
+    x1_values = [sublist[1]/amount for sublist in data]
+    x2_values = [sublist[2]/amount for sublist in data]
+    create_plot(y_values, x1_values, x2_values)
+    plt.pause(0.001)
+
+
+def create_plot(y_values, x1_values, x2_values):
     # Create a line plot for the first graph with x and y switched
     plt.plot(y_values, x1_values, marker='o', label='2 Personen mit gleichen Geburtstag')
 
@@ -33,6 +50,8 @@ def plot(data):
 
     # Show the plot
     plt.show()
+
+
 
 if __name__ == '__main__':
     data = create_data()
